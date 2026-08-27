@@ -1,0 +1,822 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BDA Index — batalhas por MC</title>
+<meta name="description" content="Índice de batalhas da Batalha da Aldeia por MC. Cada batalha abre no segundo exato, inclusive dentro das compilações.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400&family=Sedgwick+Ave+Display&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#000; --deep:#0F0F0F; --card:#1A1A1A;
+  --line:#222; --soft:#1A1A1A; --hi:#333;
+  --fg:#FFF; --dim:#9CA3AF; --mut:#6B7280;
+  --hot:#F59230; --red:#DC2626;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:300 16px/1.5 Sora,system-ui,sans-serif}
+a{color:var(--hot);text-decoration:none}
+a:hover{color:var(--fg)}
+:focus-visible{outline:2px solid var(--hot);outline-offset:2px}
+button,input{font:inherit;color:inherit}
+img{display:block}
+.stamp{font-family:'Sedgwick Ave Display',cursive;color:var(--hot);font-weight:400}
+.mut{color:var(--mut);font-size:12px}
+.dim{color:var(--dim)}
+.hot{color:var(--hot)}
+
+/* pilulas: unica forma arredondada do sistema */
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 12px;
+      font-size:12px;border:1px solid var(--line);color:var(--dim);background:none;white-space:nowrap}
+button.pill{cursor:pointer}
+button.pill:hover{border-color:var(--hi);color:var(--fg)}
+.pill.on{background:var(--hot);color:#000;border-color:var(--hot)}
+.pill.solid{background:var(--hot);color:#000;border-color:var(--hot);cursor:pointer}
+.pill.solid:hover{color:#000;opacity:.88}
+.bar{height:2px;background:var(--line)}
+.bar>i{display:block;height:2px;background:var(--hot)}
+
+/* ---------- topo ---------- */
+.top{position:sticky;top:0;z-index:6;background:var(--bg);border-bottom:1px solid var(--line);padding:16px}
+.top .brand{font-size:18px}
+.brandrow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.field{display:flex;align-items:center;gap:10px;border:1px solid var(--hi);background:var(--card);
+       padding:0 14px;height:48px;margin-top:14px}
+.field input{flex:1;min-width:0;background:none;border:0;outline:none;font-weight:400;font-size:16px}
+.field .caret{color:var(--hot)}
+.field.none{border-color:var(--red)} .field.none .caret,.field.none .count{color:var(--red)}
+.count{font-size:12px;color:var(--mut)}
+kbd.slash{display:none;font:inherit;font-size:12px;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:2px 9px}
+.topstats{display:flex;gap:18px;font-size:12px;color:var(--mut);margin-top:12px;flex-wrap:wrap}
+.topstats b{color:var(--fg);font-weight:400}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+
+/* A faixa rola sem barra visivel: no mouse nao havia como chegar nos anos cortados.
+   Duas setas que somem nas pontas + arrastar direto na faixa. */
+.rail{position:relative;min-width:0;margin-top:10px}
+.rail .chips{cursor:grab;scroll-behavior:smooth}
+/* No arrasto o scroll tem que ser cru, senao cada delta vira animacao e a faixa
+   engasga. Os ~4px antes da classe entrar animam, e imperceptivel. */
+.rail .chips.drag{cursor:grabbing;scroll-behavior:auto}
+.rail .chips.drag .pill{pointer-events:none}  /* nao vira clique de filtro ao soltar */
+@media(prefers-reduced-motion:reduce){.rail .chips{scroll-behavior:auto}}
+.nudge{position:absolute;top:50%;translate:0 -50%;z-index:2;width:32px;height:32px;padding:0;
+       border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--dim);
+       box-shadow:0 0 0 7px var(--bg);cursor:pointer;display:none;align-items:center;justify-content:center}
+.nudge:hover{border-color:var(--hi);color:var(--fg)}
+.nudge.on{display:flex}
+.nudge[data-nudge="-1"]{left:0}
+.nudge[data-nudge="1"]{right:0}
+.sortrow{margin-top:12px}
+@media(min-width:900px){
+  .top{padding:18px 32px;display:flex;align-items:center;gap:32px}
+  .brandrow{flex:none} .brandrow .mut{display:none} .topstats{margin:0}
+  .field{margin:0;flex:1;max-width:560px;height:50px}
+  kbd.slash{display:block}
+  .sortrow{margin:0;flex:none}
+}
+
+/* ---------- marquee ---------- */
+.marquee{overflow:hidden;border-bottom:1px solid var(--line);background:var(--deep);padding:9px 0}
+.marquee>div{display:flex;width:max-content;animation:mq 26s linear infinite}
+.marquee span{display:flex;gap:28px;flex:none;font-size:12px;color:var(--mut);
+              white-space:nowrap;padding-left:28px}
+@keyframes mq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media(prefers-reduced-motion:reduce){.marquee>div{animation:none}}
+
+/* ---------- carrossel de edicoes ---------- */
+.eds{border-bottom:1px solid var(--line);padding:22px 16px 20px;position:relative}
+.eds h2,.sec h2{font-size:20px;font-weight:400;margin:0}
+.sechead{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.edrail{display:flex;gap:12px;overflow-x:auto;margin-top:14px;padding-bottom:4px;scrollbar-width:none}
+.edrail::-webkit-scrollbar{display:none}
+.edcard{width:174px;flex:none;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card);color:var(--fg)}
+.edcard:hover{border-color:var(--hot);color:var(--fg)}
+.edcard .cap{height:96px;background:linear-gradient(180deg,#262626,#000);display:flex;align-items:flex-end;padding:10px}
+.edcard .cap .stamp{font-size:17px}
+.edcard .foot{padding:10px 12px;font-size:13px}
+.eds::after{content:'';position:absolute;top:56px;right:0;bottom:24px;width:90px;pointer-events:none;
+            background:linear-gradient(90deg,rgba(0,0,0,0),#000 80%)}
+@media(min-width:900px){.eds{padding:22px 32px 20px}}
+
+/* ---------- listas de MC ---------- */
+.pad{padding:24px 16px 80px}
+@media(min-width:900px){.pad{padding:26px 32px 80px}}
+.sec+.sec{margin-top:36px}
+.sechead{border-bottom:1px solid var(--line);padding-bottom:12px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:16px}
+.mccard{border:1px solid var(--line);background:var(--card);padding:16px;display:flex;flex-direction:column;
+        gap:12px;min-height:116px;color:var(--fg)}
+.mccard:hover{border-color:var(--hot);color:var(--fg)}
+.mccard .nm{font-size:20px;line-height:1.15;letter-spacing:-.01em;font-weight:400}
+.mccard .ct{font-size:22px;color:var(--hot);margin-top:8px}
+.rows{margin-top:8px}
+@media(min-width:900px){.rows{display:grid;grid-template-columns:repeat(4,1fr);column-gap:32px}}
+.mcrow{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid var(--soft);
+       min-height:44px;color:var(--fg)}
+.mcrow:hover{background:var(--deep);color:var(--fg)}
+.mcrow .rk{font-size:12px;color:var(--mut);width:28px;flex:none}
+.mcrow .nm{flex:1;min-width:0}
+.mcrow .nmt{display:block;font-size:17px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mcrow .nm .bar{margin-top:8px}
+.mcrow .ct{flex:none;text-align:right}
+.mcrow .ct b{display:block;font-size:15px;color:var(--hot);font-weight:400}
+.mcrow .ct small{font-size:11px;color:var(--mut)}
+@media(min-width:900px){
+  .mcrow .rk{display:none}
+  .mcrow .nm{display:flex;align-items:center}
+  .mcrow .nmt{font-size:16px}
+  .mcrow .nm .bar{width:44px;flex:none;margin:0 0 0 12px}
+  .mcrow .ct b{display:inline;font-size:13px;color:var(--dim);min-width:30px}
+  .mcrow .ct small{display:none}
+}
+.more{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:28px}
+.note{border:1px solid var(--line);background:var(--deep);padding:16px;margin-top:20px}
+.note p{margin:8px 0 0;font-size:13px;color:var(--dim);line-height:1.55;text-wrap:pretty}
+
+/* ---------- estado vazio ---------- */
+.empty{padding:36px 4px}
+.empty h2{font-size:30px;font-weight:300;line-height:1.2;letter-spacing:-.01em;margin:0}
+.empty p{font-size:14px;color:var(--dim);line-height:1.6;margin:14px 0 0;text-wrap:pretty;max-width:52ch}
+.tries{display:flex;flex-wrap:wrap;gap:8px}
+.tries .pill{font-size:14px;padding:9px 14px;border-color:var(--hi);color:var(--fg)}
+.mini{display:flex;flex-direction:column;margin-top:10px}
+.mini a{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:11px 0;
+        border-bottom:1px solid var(--soft);color:var(--fg);min-height:44px}
+.mini a:hover{color:var(--hot)}
+.mini a span:first-child{font-size:16px;font-weight:400}
+.mini a span:last-child{font-size:12px;color:var(--hot)}
+
+/* ---------- pagina de MC / confronto ---------- */
+.page{display:flex;flex-direction:column}
+.col-side{padding:14px 16px 18px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:20px}
+.col-play{padding:16px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:14px;background:var(--deep)}
+.col-list{flex:1;min-width:0;padding-bottom:80px;order:3}
+.col-side{order:1} .col-play{order:2}
+@media(min-width:900px){
+  .page{flex-direction:row;align-items:flex-start}
+  .col-side{order:1;width:236px;flex:none;border-bottom:0;border-right:1px solid var(--line);
+            padding:22px 18px;position:sticky;top:0;max-height:100vh;overflow:auto}
+  .col-list{order:2}
+  .col-play{order:3;width:356px;flex:none;border-bottom:0;border-left:1px solid var(--line);
+            padding:18px;position:sticky;top:0;max-height:100vh;overflow:auto;background:none}
+}
+.mcname{font-size:38px;font-weight:300;line-height:1.05;letter-spacing:-.02em;margin:4px 0 0}
+@media(min-width:900px){.mcname{font-size:32px}}
+.bignum{font-size:34px;color:var(--hot);font-weight:400;margin-top:12px}
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.deskonly{display:none}
+.backrow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.filters{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.filters .pill{flex:none;font-size:13px;padding:7px 12px}
+@media(min-width:900px){
+  .deskonly{display:block}
+  .badges{display:none}
+  .filters{flex-direction:column;gap:6px;margin-top:10px;overflow:visible}
+  .filters .pill{justify-content:space-between}
+}
+.stick{position:sticky;top:0;z-index:4;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 16px}
+@media(min-width:900px){.stick{padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}}
+
+/* ---------- linha de batalha ---------- */
+.b{display:flex;gap:12px;padding:14px 16px;border-bottom:1px solid var(--soft);width:100%;
+   text-align:left;background:none;border-left:0;border-right:0;border-top:0;cursor:pointer;min-height:44px}
+.b:hover{background:var(--deep)}
+.b.on{background:var(--deep);box-shadow:inset 3px 0 0 var(--hot)}
+.b .when{display:none;font-size:12px;color:var(--mut);width:62px;flex:none;padding-top:2px}
+.b .thumb{position:relative;width:96px;height:54px;flex:none;background:var(--card);border:1px solid var(--line);
+          border-radius:8px;overflow:hidden;padding:0;cursor:pointer}
+.b .thumb img{width:100%;height:100%;object-fit:cover}
+.b .thumb .dur{position:absolute;right:4px;bottom:4px;font-size:10px;background:rgba(0,0,0,.75);
+               padding:1px 4px;border-radius:999px}
+.b .body{flex:1;min-width:0}
+.vs{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+.vs .side{font-size:17px;font-weight:400;line-height:1.2}
+.vs .side.me{color:var(--hot)}
+.vs .x{font-size:13px;color:var(--mut)}
+.meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--mut)}
+.meta .stamp{font-size:16px}
+.meta .pill{font-size:11px;padding:3px 9px}
+.tag{border-radius:999px;padding:4px 10px;font-size:11px;white-space:nowrap}
+.tag.stream{background:var(--hot);color:#000}
+.tag.clip{border:1px solid var(--hi);color:var(--dim)}
+.b .go{display:none;flex:none;align-self:center;font-size:12px;color:var(--mut)}
+@media(min-width:900px){
+  .b{align-items:center;padding:14px 24px;gap:14px}
+  .b .when{display:block;padding:0}
+  .meta .narrow{display:none}  /* a data ja esta na coluna .when */
+  .b .thumb{width:88px;height:50px}
+  .b .go{display:block}
+}
+.b:hover .go{color:var(--hot)}
+.inlinebox{padding:14px 16px;border-bottom:1px solid var(--soft);background:var(--deep)}
+@media(min-width:900px){.inlinebox{padding:14px 24px}}
+
+/* Lista de MC: unica tela sem coluna de player, entao a linha pode respirar. */
+.mclist{max-width:840px;margin-inline:auto}
+.mclist .b{gap:16px;padding:20px 16px}
+.mclist .inlinebox{max-width:640px}
+@media(min-width:900px){
+  .mclist .b{padding:22px 32px;gap:20px}
+  .mclist .b .thumb{width:128px;height:72px}
+}
+
+/* ---------- player ---------- */
+.screen{position:relative;width:100%;aspect-ratio:16/9;background:var(--deep);border:1px solid var(--line);
+        border-radius:8px;overflow:hidden}
+.screen img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.45}
+.screen .poster{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;align-items:center;
+                justify-content:center;gap:12px;background:none;border:0;padding:0;cursor:pointer}
+.screen .btn{width:64px;height:44px;background:var(--red);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.screen .btn i{width:0;height:0;border-left:14px solid #fff;border-top:9px solid transparent;
+               border-bottom:9px solid transparent;margin-left:4px}
+.screen .poster:hover .btn{background:#ef4444}
+/* o embed pinta preto por 1-2s antes de montar: o poster cobre ele ate o load.
+   display:none em vez de fade -- visibilidade nao pode depender de transicao rodar */
+.screen iframe{position:absolute;inset:0;width:100%;height:100%}
+.screen.ready .poster{display:none}
+.spin{width:28px;height:28px;border:2px solid var(--line);border-top-color:var(--hot);
+      border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(1turn)}}
+@media(prefers-reduced-motion:reduce){.spin{animation-duration:2.4s}}
+iframe{width:100%;aspect-ratio:16/9;border:0;border-radius:8px;display:block}
+.foot{margin-top:auto;padding-top:18px;font-size:11px;color:var(--mut);line-height:1.7}
+
+/* ---------- confronto ---------- */
+.h2hhead{padding:20px 16px;border-bottom:1px solid var(--line)}
+@media(min-width:900px){.h2hhead{padding:26px 32px;display:flex;flex-wrap:wrap;align-items:flex-end;gap:32px}
+  .h2hhead>a{flex:0 0 100%}}
+.duo{display:flex;flex-direction:column;gap:8px;flex:1}
+@media(min-width:900px){.duo{flex-direction:row;align-items:center;gap:24px}}
+.duo .who{flex:1}
+.duo .who .n{font-size:32px;font-weight:300;line-height:1.05;letter-spacing:-.02em;margin-top:4px}
+@media(min-width:900px){.duo .who .n{font-size:40px}}
+.duo .n.a{color:var(--hot)}
+.duo .sep{font-size:24px;color:var(--mut);text-align:center}
+.tally{display:flex;align-items:flex-end;gap:24px;margin-top:20px;flex:none}
+@media(min-width:900px){.tally{margin:0}}
+.tally .big{font-size:52px;color:var(--hot);font-weight:400;line-height:1}
+.hist{display:flex;gap:5px;align-items:flex-end;height:66px}
+.hist div{display:flex;flex-direction:column;align-items:center;gap:6px;width:30px}
+.hist i{display:block;width:100%;background:var(--hot)}
+.hist span{font-size:11px;color:var(--mut)}
+.swap{display:flex;align-items:center;gap:10px;border:1px solid var(--hi);background:var(--card);padding:0 14px;height:48px;margin-top:8px}
+.swap input{flex:1;min-width:0;background:none;border:0;outline:none;font-size:16px;font-weight:400}
+</style>
+
+<main id="app" aria-live="polite"><p class="pad dim">carregando…</p></main>
+<datalist id="mcnames"></datalist>
+
+<script>
+const app = document.getElementById('app')
+const api = p => fetch('/api' + p).then(r => r.ok ? r.json() : Promise.reject(r.status))
+const esc = s => String(s ?? '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]))
+const enc = encodeURIComponent
+const norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+const wide = matchMedia('(min-width:900px)')
+
+const nf = new Intl.NumberFormat('pt-BR')
+const cf = new Intl.NumberFormat('pt-BR', {notation:'compact', maximumFractionDigits:1})
+const views = n => n ? cf.format(n) + ' views' : ''
+const clock = s => new Date(s * 1000).toISOString().substr(s >= 3600 ? 11 : 14, s >= 3600 ? 8 : 5)
+const dt = (s, o) => s ? new Date(s).toLocaleDateString('pt-BR', o) : ''
+const short = s => dt(s, {day:'2-digit', month:'2-digit', year:'2-digit'})
+const yr = s => s ? +s.slice(0, 4) : 0
+const pad2 = n => String(n).padStart(2, '0')
+
+// Os 1.656 MCs cabem em ~80KB. Uma vez por sessao, e toda busca vira filtro
+// local -- mais rapido que o round-trip e serve contagem, cauda e datalist.
+const memo = {}
+const once = (k, f) => (memo[k] ??= f())
+const allMcs = () => once('mcs', () => api('/mcs?limit=99999').then(ms => {
+  ms.forEach((m, i) => { m.k = norm(m.name); m.rank = i + 1 })
+  document.getElementById('mcnames').innerHTML =
+    ms.map(m => `<option value="${esc(m.name)}">`).join('')
+  return ms
+}))
+const stats = () => once('stats', () => api('/stats'))
+const editions = () => once('eds', () => api('/editions'))
+const pairs = () => once('pairs', () => api('/pairs'))
+
+/* ---------------- batalha: derivacoes ---------------- */
+
+// Sem campo de formato no banco: sai da forma dos times.
+const format = b => b.teams.length > 2 ? 'três lados'
+  : Math.max(1, ...b.teams.map(t => t.length)) > 2 ? 'trios'
+  : Math.max(1, ...b.teams.map(t => t.length)) > 1 ? 'duplas' : '1 contra 1'
+const stream = b => b.source === 'chapter' || b.start_s > 0
+const at = b => clock(b.start_s || 0)
+const link = b => `https://youtu.be/${b.video_id}?t=${b.start_s || 0}`
+const mine = (b, me) => b.teams.findIndex(t => t.some(m => m.slug === me))
+
+const sideHTML = (t, isMe, me) => `<span class="side${isMe ? ' me' : ''}">` + t.map(m =>
+  m.slug === me || !me ? esc(m.name)
+    : `<a href="#/h2h/${enc(me)}/${enc(m.slug)}" data-stop>${esc(m.name)}</a>`).join(' &amp; ') + '</span>'
+
+const vsHTML = (b, me, cls) => `<span class="${cls}">` + b.teams
+  .map((t, i) => sideHTML(t, i === mine(b, me), me))
+  .join('<span class="x">x</span>') + '</span>'
+
+function battleHTML(b, me, i) {
+  const who = b.teams.map(t => t.map(m => m.name).join(' & ')).join(' x ')
+  return `<div class="b" data-i="${i}">
+    <span class="when">${short(b.published_at)}</span>
+    <button class="thumb" type="button" aria-label="Tocar ${esc(who)}">
+      ${b.thumb ? `<img src="${esc(b.thumb)}" loading="lazy" alt="">` : ''}
+      ${b.duration_s ? `<span class="dur">${clock(b.duration_s)}</span>` : ''}</button>
+    <span class="body">
+      ${vsHTML(b, me, 'vs')}
+      <span class="meta">
+        ${b.edition_n ? `<span class="stamp">BDA ${b.edition_n}</span>` : ''}
+        <span class="narrow">${short(b.published_at)}</span>
+        ${b.view_count ? `<span>${views(b.view_count)}</span>` : ''}
+        ${stream(b) ? `<span>· transmissão em ${at(b)}</span>` : ''}
+      </span>
+    </span>
+    <span class="go">tocar</span>
+  </div>`
+}
+
+/* ---------------- player ---------------- */
+
+// A thumb vira o iframe oficial so no clique: nada de terceiro carregado a toa.
+function playerHTML(b) {
+  return `<div class="screen">
+    ${b.thumb ? `<img src="${esc(b.thumb)}" alt="">` : ''}
+    <button class="poster" type="button" aria-label="Tocar a batalha">
+      <span class="btn"><i></i></span>
+      <span class="mut">${stream(b) ? 'abre em ' + at(b) + ' da transmissão' : 'embed oficial · 16:9'}</span>
+    </button></div>`
+}
+
+function startPlayer(el, b) {
+  if (el.querySelector('iframe')) return
+  el.querySelector('.poster').outerHTML =
+    '<span class="poster"><span class="spin"></span><span class="mut">carregando o player…</span></span>'
+  const f = document.createElement('iframe')
+  f.allow = 'autoplay; encrypted-media; picture-in-picture'
+  f.allowFullscreen = true
+  f.title = 'Player do YouTube'
+  f.src = `https://www.youtube-nocookie.com/embed/${b.video_id}?start=${b.start_s || 0}&autoplay=1`
+    + (b.end_s ? `&end=${b.end_s}` : '')
+  const ready = () => el.classList.add('ready')
+  f.addEventListener('load', ready)
+  setTimeout(ready, 6000)  // load do YouTube falhou: melhor o embed cru que spinner eterno
+  el.appendChild(f)
+}
+
+/* ---------------- tela 1: escolher o MC ---------------- */
+
+const S = {}
+
+async function home() {
+  const [ms, st, eds] = await Promise.all([allMcs(), stats(), editions()])
+  Object.assign(S, {q:'', sort:'count', n:0, tail:false, ms, st})
+  const mark = `<span>TODA SEGUNDA EM BARUERI</span><span class="hot">·</span>
+    <span>${nf.format(st.battles)} BATALHAS INDEXADAS</span><span class="hot">·</span>
+    <span>${st.ed_min}ª À ${st.ed_max}ª EDIÇÃO</span><span class="hot">·</span>
+    <span>${yr(st.first_at)} → ${yr(st.last_at)}</span><span class="hot">·</span>`
+
+  app.innerHTML = `
+  <header class="top">
+    <div class="brandrow">
+      <span class="stamp brand">BDA Index</span>
+      <span class="mut" style="text-align:right;line-height:1.5">${nf.format(st.battles)} batalhas<br>${nf.format(st.mcs)} MCs</span>
+    </div>
+    <div class="field" id="field">
+      <span class="caret" aria-hidden="true">↳</span>
+      <input id="q" type="search" autocomplete="off" spellcheck="false"
+             placeholder="buscar entre ${nf.format(st.mcs)} MCs" aria-label="Buscar MC">
+      <span class="count" id="qn">${nf.format(st.mcs)}</span>
+      <kbd class="slash">/</kbd>
+    </div>
+    <div class="chips sortrow" role="group" aria-label="Ordenação">
+      <button class="pill on" data-sort="count">mais batalhas</button>
+      <button class="pill" data-sort="az">A–Z</button>
+    </div>
+    <div class="topstats">
+      <span>batalhas <b>${nf.format(st.battles)}</b></span>
+      <span>MCs <b>${nf.format(st.mcs)}</b></span>
+      <span class="hot">${st.ed_min}ª → ${st.ed_max}ª edição</span>
+    </div>
+  </header>
+  <div class="marquee" aria-hidden="true"><div><span>${mark}</span><span>${mark}</span></div></div>
+  <section class="eds">
+    <div class="sechead"><h2>Últimas edições</h2>
+      <span class="mut">o índice cobre ${st.ed_max - st.ed_min + 1} edições</span></div>
+    <div class="edrail">${eds.map(e => `<a class="edcard" href="#/ed/${e.n}">
+      <span class="cap"><span class="stamp">BDA ${e.n}</span></span>
+      <span class="foot">${dt(e.published_at)}<br><span class="mut">${e.battles} batalhas</span></span></a>`).join('')}</div>
+  </section>
+  <section id="out" class="pad"></section>`
+
+  const q = document.getElementById('q')
+  q.oninput = () => { S.q = q.value; S.n = 0; paintHome() }
+  if (wide.matches) q.focus()
+  paintHome()
+}
+
+// Nada encontrado? Encurta o pedaco mais longo ate achar, e devolve nomes reais
+// do indice -- e o proprio nome de guerra que costuma estar grafado diferente.
+function tries(q, ms) {
+  const seen = new Map()
+  const toks = q.split(/\s+/).filter(t => t.length >= 3).sort((a, b) => b.length - a.length)
+  for (const t of (toks.length ? toks : [q]))
+    for (let n = t.length; n >= 3 && seen.size < 3; n--)
+      ms.filter(m => m.k.includes(norm(t.slice(0, n)))).slice(0, 3)
+        .forEach(m => seen.set(m.slug, m.name))
+  return [...seen.values()].slice(0, 3)
+}
+
+function paintHome() {
+  const {ms, st} = S, out = document.getElementById('out')
+  const q = S.q.trim(), nq = norm(q)
+  const max = ms[0].battles
+  const pct = m => Math.max(2, Math.round(m.battles / max * 100)) + '%'
+
+  let list = ms
+  if (S.sort === 'az') list = ms.slice().sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+  // Sem busca a cauda de 1 batalha fica recolhida: e onde mora o ruido de legenda de Short.
+  const hits = nq ? list.filter(m => m.k.includes(nq)) : (S.tail ? list : list.filter(m => m.battles > 1))
+  const solos = ms.filter(m => m.battles === 1).length
+
+  document.getElementById('qn').textContent = nq ? hits.length + ' de ' + nf.format(st.mcs) : nf.format(st.mcs)
+  document.getElementById('field').classList.toggle('none', !!nq && !hits.length)
+
+  if (nq && !hits.length) {
+    const t = tries(q, ms)
+    out.innerHTML = `<div class="empty">
+      <h2>Nenhum MC com esse nome no índice</h2>
+      <p>A cobertura vai da ${st.ed_min}ª à ${st.ed_max}ª edição. Nome de guerra pode estar grafado
+         diferente no título do vídeo — tenta um pedaço só.</p>
+      ${t.length ? `<div class="stamp" style="font-size:16px;margin:28px 0 12px">tenta assim</div>
+        <div class="tries">${t.map(n => `<button class="pill" data-try="${esc(n)}">${esc(n)}</button>`).join('')}</div>` : ''}
+      <div style="margin-top:32px;border-top:1px solid var(--line);padding-top:20px">
+        <span class="mut">ou vai pelos mais rodados</span>
+        <div class="mini">${ms.slice(0, 3).map(m => `<a href="#/mc/${enc(m.slug)}">
+          <span>${esc(m.name)}</span><span>${m.battles}</span></a>`).join('')}</div>
+      </div></div>`
+    return
+  }
+
+  const card = m => `<a class="mccard" href="#/mc/${enc(m.slug)}">
+    <span class="mut">${pad2(m.rank)}</span>
+    <span class="nm">${esc(m.name)}</span>
+    <span style="margin-top:auto"><span class="bar"><i style="width:${pct(m)}"></i></span>
+      <span class="ct" style="display:block">${m.battles}</span></span></a>`
+
+  const row = m => `<a class="mcrow" href="#/mc/${enc(m.slug)}">
+    <span class="rk">${pad2(m.rank)}</span>
+    <span class="nm"><span class="nmt">${esc(m.name)}</span><span class="bar"><i style="width:${pct(m)}"></i></span></span>
+    <span class="ct"><b>${m.battles}</b><small>batalha${m.battles > 1 ? 's' : ''}</small></span></a>`
+
+  // Desktop abre com os 10 mais rodados em cartao; mobile e uma lista densa unica.
+  const top = !nq && S.sort === 'count' && wide.matches ? hits.slice(0, 10) : []
+  const rest = hits.slice(top.length)
+  const page = (wide.matches ? 24 : 40)
+  const shown = rest.slice(0, page + S.n)
+
+  out.innerHTML = `
+    ${top.length ? `<section class="sec">
+      <div class="sechead"><h2>Os 10 mais rodados</h2><span class="mut">ordenado por nº de batalhas</span></div>
+      <div class="cards">${top.map(card).join('')}</div></section>` : ''}
+    <section class="sec">
+      <div class="sechead">
+        <h2>${nq ? hits.length + ' MC' + (hits.length > 1 ? 's' : '') + ' para “' + esc(q) + '”'
+                 : nf.format(ms.length - solos) + ' MCs com duas batalhas ou mais'}</h2>
+        <span class="mut">${nq ? 'inclui a cauda de 1 batalha' : `a cauda de 1 batalha (${solos}) fica recolhida no rodapé`}</span>
+      </div>
+      <div class="rows">${shown.map(row).join('')}</div>
+      ${rest.length > shown.length ? `<div class="more">
+        <span class="mut">mostrando ${shown.length} de ${rest.length}</span>
+        <button class="pill solid" data-more>carregar mais</button></div>` : ''}
+      ${!nq && !S.tail ? `<div class="note">
+        <div style="font-size:16px;font-weight:400">${solos} MCs com uma batalha só</div>
+        <p>Fica recolhido no fim da lista — é onde mora o ruído de legenda de Short. Abre só se você pedir.</p>
+        <button class="pill solid" data-tail style="margin-top:12px">mostrar tudo</button></div>` : ''}
+    </section>`
+}
+
+/* ---------------- tela 2: pagina do MC ---------------- */
+
+async function mcPage(slug) {
+  const [d, ms] = await Promise.all([api('/mcs/' + enc(slug)), allMcs()])
+  const bs = d.battles
+  Object.assign(S, {mc: d.mc, bs, fmt: 'todas', year: 0, n: 0, sel: 0, ms})
+
+  if (bs.length === 1) return soloPage(d, ms)
+
+  const counts = {}
+  bs.forEach(b => counts[format(b)] = (counts[format(b)] || 0) + 1)
+  const years = [...new Set(bs.map(b => yr(b.published_at)))].filter(Boolean).sort((a, b) => b - a)
+  const eds = bs.map(b => b.edition_n).filter(Boolean)
+  const foes = {}
+  bs.forEach(b => { const k = mine(b, slug)
+    b.teams.forEach((t, i) => i !== k && t.forEach(m => foes[m.slug] = {name: m.name, n: (foes[m.slug]?.n || 0) + 1})) })
+  const top = Object.entries(foes).sort((a, b) => b[1].n - a[1].n).slice(0, 3)
+
+  app.innerHTML = `<div class="page">
+    <aside class="col-side">
+      <div class="backrow"><a href="#">← todos os MCs</a></div>
+      <div>
+        <div class="stamp" style="font-size:16px">mc</div>
+        <h1 class="mcname">${esc(d.mc.name)}</h1>
+        <div class="deskonly">
+          <div class="bignum">${bs.length}</div>
+          <div class="mut">batalhas indexadas</div>
+        </div>
+        <div class="badges"><span class="pill on">${bs.length} batalhas</span></div>
+      </div>
+      <div>
+        <div class="mut deskonly">formato</div>
+        <div class="filters" id="fmt">
+          <button class="pill on" data-fmt="todas"><span>todas</span><span>${bs.length}</span></button>
+          ${['1 contra 1','duplas','trios','três lados'].filter(f => counts[f]).map(f =>
+            `<button class="pill" data-fmt="${f}"><span>${f}</span><span>${counts[f]}</span></button>`).join('')}
+        </div>
+      </div>
+      ${top.length ? `<div class="deskonly"><div class="mut">quem ele mais enfrentou</div>
+        <div class="mini">${top.map(([s, o]) => `<a href="#/h2h/${enc(slug)}/${enc(s)}">
+          <span>${esc(o.name)}</span><span>${o.n}</span></a>`).join('')}</div></div>` : ''}
+    </aside>
+
+    <div class="col-list mclist">
+      <div class="stick">
+        <span class="dim" style="font-size:13px">cronológico · <span style="color:var(--fg)">mais recente primeiro</span></span>
+        <div class="rail">
+          <button class="nudge" data-nudge="-1" type="button" aria-label="anos mais recentes">←</button>
+          <div class="chips" id="years">
+            <button class="pill on" data-year="0">todos os anos</button>
+            ${years.map(y => `<button class="pill" data-year="${y}">${y}</button>`).join('')}
+          </div>
+          <button class="nudge" data-nudge="1" type="button" aria-label="anos mais antigos">→</button>
+        </div>
+      </div>
+      <div id="list"></div>
+    </div>
+  </div>`
+
+  paintList(); rail()
+}
+
+// Seta que aponta para onde nao ha mais ano mente: cada uma some na sua ponta.
+function rail() {
+  const c = document.getElementById('years')
+  if (!c) return
+  c.parentElement.querySelectorAll('.nudge').forEach(n => n.classList.toggle('on',
+    +n.dataset.nudge > 0 ? Math.ceil(c.scrollLeft + c.clientWidth) < c.scrollWidth : c.scrollLeft > 1))
+}
+// Globais e registrados uma vez: a faixa e recriada a cada render, anexar por
+// render vazaria um listener por MC visitado. 'scroll' nao borbulha, dai o capture.
+addEventListener('resize', rail)
+app.addEventListener('scroll', rail, true)
+
+function shownBattles() {
+  return S.bs.filter(b => (S.fmt === 'todas' || format(b) === S.fmt)
+                       && (!S.year || yr(b.published_at) === S.year))
+}
+
+function paintList() {
+  const all = shownBattles(), page = 60
+  const list = all.slice(0, page + S.n)
+  document.getElementById('list').innerHTML =
+    (list.map(b => battleHTML(b, S.mc.slug, S.bs.indexOf(b))).join('')
+      || '<p class="pad dim">Nenhuma batalha nesse recorte.</p>')
+    + (all.length > list.length ? `<div class="more" style="padding:22px">
+        <span class="mut">${list.length} de ${all.length}</span>
+        <button class="pill solid" data-more>carregar mais</button></div>` : '')
+  markSel()
+}
+
+const markSel = () => document.querySelectorAll('#list .b').forEach(el =>
+  el.classList.toggle('on', +el.dataset.i === S.sel))
+
+// 702 MCs tem exatamente uma batalha: sem lista, sem filtro, a tela vira a propria batalha.
+async function soloPage(d, ms) {
+  const b = d.battles[0], me = d.mc.slug
+  const ed = b.edition_n ? await api('/editions/' + b.edition_n).catch(() => ({battles: []})) : {battles: []}
+  const roster = {}
+  ed.battles.forEach(x => x.teams.forEach(t => t.forEach(m => m.slug !== me && (roster[m.slug] = m.name))))
+  const others = Object.entries(roster).slice(0, 3)
+    .map(([s, n]) => [s, n, ms.find(m => m.slug === s)?.battles || 1])
+
+  app.innerHTML = `<div class="pad" style="max-width:640px">
+    <a href="#">← todos os MCs</a>
+    <div class="stamp" style="font-size:16px;margin-top:16px">mc</div>
+    <h1 class="mcname">${esc(d.mc.name)}</h1>
+    <div class="badges">
+      <span class="pill on">1 batalha</span>
+      <span class="pill">estreia em ${yr(b.published_at)}</span>
+      ${b.edition_n ? `<span class="pill">${b.edition_n}ª edição</span>` : ''}
+    </div>
+    <div style="background:var(--deep);border:1px solid var(--line);margin:24px 0 0">
+      <div style="padding:14px 16px 12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          ${b.edition_n ? `<span class="stamp" style="font-size:16px">BDA ${b.edition_n}</span>` : ''}
+          <span class="mut">${dt(b.published_at)}${b.view_count ? ' · ' + views(b.view_count) : ''}</span>
+        </div>
+        ${vsHTML(b, me, 'vs')}
+      </div>
+      <div id="play">${playerHTML(b)}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px">
+        <span class="tag ${stream(b) ? 'stream' : 'clip'}">${stream(b) ? 'transmissão · em ' + at(b) : 'clipe individual'}</span>
+        <a href="${esc(link(b))}" target="_blank" rel="noopener">abrir no YouTube ↗</a>
+      </div>
+    </div>
+    <p style="font-size:20px;font-weight:300;line-height:1.35;margin:24px 0 0">É a única batalha de ${esc(d.mc.name)} no índice até agora.</p>
+    <p class="dim" style="font-size:13px;line-height:1.6;text-wrap:pretty">702 MCs estão nessa situação. Sem lista longa,
+      sem filtro de formato, sem salto por ano — a tela vira a própria batalha, e o resto é caminho de saída.</p>
+    ${others.length ? `<div class="note"><span class="mut">quem estava na mesma edição</span>
+      <div class="mini">${others.map(([s, n, c]) => `<a href="#/mc/${enc(s)}">
+        <span>${esc(n)}</span><span>${c}</span></a>`).join('')}</div></div>` : ''}
+    ${b.edition_n ? `<a class="pill" style="margin-top:18px;padding:10px 18px;border-color:var(--hi);color:var(--fg)"
+      href="#/ed/${b.edition_n}">ver a ${b.edition_n}ª edição inteira</a>` : ''}
+  </div>`
+  S.sel = 0
+}
+
+/* ---------------- tela 3: confronto direto ---------------- */
+
+async function h2h(a, b) {
+  const [d, ms, pr] = await Promise.all([api(`/h2h/${enc(a)}/${enc(b)}`), allMcs(), pairs()])
+  const A = ms.find(m => m.slug === a), B = ms.find(m => m.slug === b)
+  const bs = d.battles
+  Object.assign(S, {bs, ms, sel: -1, mc: {slug: a}})
+
+  const byYear = {}
+  bs.forEach(x => byYear[yr(x.published_at)] = (byYear[yr(x.published_at)] || 0) + 1)
+  const ys = Object.keys(byYear).map(Number).sort()
+  const peak = Math.max(1, ...Object.values(byYear))
+  const from = ys[0]
+
+  app.innerHTML = `
+  <div class="h2hhead">
+    <a href="#/mc/${enc(a)}">← ${esc(A ? A.name : a)}</a>
+    <div class="duo" style="margin-top:16px">
+      <div class="who"><div class="stamp" style="font-size:16px">mc a</div>
+        <div class="n a">${esc(A ? A.name : a)}</div>
+        <div class="mut" style="margin-top:8px">${A ? A.battles + ' batalhas' : ''}</div></div>
+      <div class="sep">x</div>
+      <div class="who"><div class="stamp" style="font-size:16px">mc b</div>
+        <div class="n">${esc(B ? B.name : b)}</div>
+        <div class="mut" style="margin-top:8px">${B ? B.battles + ' batalhas' : ''}</div></div>
+    </div>
+    <div class="tally">
+      <div><div class="big">${bs.length}</div><div class="mut">encontro${bs.length === 1 ? '' : 's'}</div></div>
+      ${bs.length ? `<div class="hist">${ys.map(y => `<div>
+        <i style="height:${Math.round(byYear[y] / peak * 58) + 8}px"></i>
+        <span>${String(y).slice(2)}</span></div>`).join('')}</div>
+        <div class="dim" style="font-size:13px;line-height:1.5">desde<br>${from}</div>` : ''}
+    </div>
+  </div>
+  <div class="page">
+    <div class="col-list" id="list"></div>
+    <aside class="col-play" style="background:none">
+      <div><span class="mut">trocar o confronto</span>
+        <label class="swap"><input list="mcnames" data-side="a" value="${esc(A ? A.name : a)}" aria-label="MC A"></label>
+        <label class="swap"><input list="mcnames" data-side="b" value="${esc(B ? B.name : b)}" aria-label="MC B"></label>
+      </div>
+      <div style="margin-top:26px"><span class="mut">confrontos mais fartos do acervo</span>
+        <div class="mini">${pr.map(p => `<a href="#/h2h/${enc(p.a)}/${enc(p.b)}">
+          <span>${esc(p.an)} x ${esc(p.bn)}</span><span>${p.n}</span></a>`).join('')}</div></div>
+      <div class="foot">nenhum placar: o acervo não tem vencedor de batalha. o que a tela mostra é frequência e cronologia.</div>
+    </aside>
+  </div>`
+
+  document.getElementById('list').innerHTML = bs.length
+    ? bs.map((x, i) => battleHTML(x, a, i)).join('')
+    : '<p class="pad dim">Nunca se enfrentaram no índice.</p>'
+}
+
+/* ---------------- edicao inteira ---------------- */
+
+async function edPage(n) {
+  const d = await api('/editions/' + enc(n))
+  Object.assign(S, {bs: d.battles, sel: -1, mc: {slug: null}})
+  app.innerHTML = `<div class="pad">
+    <a href="#">← todos os MCs</a>
+    <h1 class="mcname"><span class="stamp" style="font-size:28px">BDA ${esc(n)}</span></h1>
+    <p class="mut">${d.battles.length} batalhas${d.battles[0] ? ' · ' + dt(d.battles[0].published_at) : ''}</p>
+  </div>
+  <div id="list">${d.battles.map((b, i) => battleHTML(b, null, i)).join('')
+    || '<p class="pad dim">Edição não encontrada.</p>'}</div>`
+}
+
+/* ---------------- eventos ---------------- */
+
+app.addEventListener('click', e => {
+  const hit = s => e.target.closest(s)
+  if (hit('[data-stop]')) return
+
+  const b = hit('.b')
+  if (b) {
+    S.sel = +b.dataset.i
+    const battle = S.bs[S.sel]
+    // Um unico player, que desce ate a linha clicada. Trocar de linha destroi o
+    // iframe anterior -- nunca dois tocando.
+    let box = document.getElementById('inline')
+    if (!box) { box = document.createElement('div'); box.id = 'inline'; box.className = 'inlinebox' }
+    if (box.dataset.i === b.dataset.i) return
+    box.dataset.i = b.dataset.i
+    b.after(box)
+    box.innerHTML = playerHTML(battle)
+      + `<a class="pill" style="margin-top:12px" href="${esc(link(battle))}"
+           target="_blank" rel="noopener" data-stop>abrir no YouTube ↗</a>`
+    startPlayer(box.firstElementChild, battle)
+    markSel()
+    return
+  }
+  const poster = hit('.poster')
+  if (poster) return startPlayer(poster.closest('.screen'), S.bs[S.sel] || S.bs[0])
+
+  // Sem behavior: quem decide animar e o scroll-behavior do CSS, que ja respeita
+  // prefers-reduced-motion junto com o resto do arquivo.
+  const nd = hit('[data-nudge]')
+  if (nd) return nd.parentElement.querySelector('.chips')
+    .scrollBy({left: +nd.dataset.nudge * 220})
+
+  const fmt = hit('[data-fmt]')
+  if (fmt) {
+    S.fmt = fmt.dataset.fmt; S.n = 0
+    document.querySelectorAll('[data-fmt]').forEach(x => x.classList.toggle('on', x === fmt))
+    return paintList()
+  }
+  const y = hit('[data-year]')
+  if (y) {
+    S.year = +y.dataset.year; S.n = 0
+    document.querySelectorAll('[data-year]').forEach(x => x.classList.toggle('on', x === y))
+    return paintList()
+  }
+  const so = hit('[data-sort]')
+  if (so) {
+    S.sort = so.dataset.sort; S.n = 0
+    document.querySelectorAll('[data-sort]').forEach(x => x.classList.toggle('on', x === so))
+    return paintHome()
+  }
+  const t = hit('[data-try]')
+  if (t) { S.q = t.dataset.try; document.getElementById('q').value = S.q; S.n = 0; return paintHome() }
+  if (hit('[data-tail]')) { S.tail = true; return paintHome() }
+  if (hit('[data-more]')) { S.n += S.mc ? 60 : 24; return S.mc ? paintList() : paintHome() }
+})
+
+// Arrastar a faixa: so no mouse. No toque o overflow-x ja rola sozinho, e
+// duplicar o gesto faria a faixa andar o dobro.
+app.addEventListener('pointerdown', e => {
+  const c = e.target.closest('.chips')
+  if (!c || e.pointerType !== 'mouse') return
+  let x = e.clientX, far = 0
+  // Na window, nao na faixa: o arrasto continua valendo com o cursor fora dela.
+  const move = ev => {
+    far += Math.abs(ev.clientX - x)
+    c.scrollLeft -= ev.clientX - x
+    x = ev.clientX
+    if (far > 4) c.classList.add('drag')
+    rail()
+  }
+  const up = () => {
+    removeEventListener('pointermove', move)
+    removeEventListener('pointerup', up)
+    // O click do mouseup ainda vai disparar: so libera os pills depois dele.
+    setTimeout(() => c.classList.remove('drag'))
+  }
+  addEventListener('pointermove', move)
+  addEventListener('pointerup', up)
+})
+
+// Trocar um lado do confronto: o datalist ja tem os 1.656 nomes.
+app.addEventListener('change', e => {
+  const i = e.target.closest('[data-side]')
+  if (!i) return
+  const hit = S.ms?.find(m => norm(m.name) === norm(i.value))
+  if (!hit) return
+  const [, , a, b] = location.hash.split('/')
+  location.hash = i.dataset.side === 'a' ? `#/h2h/${enc(hit.slug)}/${b}` : `#/h2h/${a}/${enc(hit.slug)}`
+})
+
+addEventListener('keydown', e => {
+  const q = document.getElementById('q')
+  if (e.key === '/' && q && document.activeElement !== q) { e.preventDefault(); q.focus() }
+})
+
+wide.addEventListener('change', () => { if (document.getElementById('out')) paintHome() })
+
+/* ---------------- rotas ---------------- */
+
+const routes = {'': home, mc: mcPage, h2h, ed: edPage}
+
+function go() {
+  const [name, ...args] = location.hash.replace(/^#\/?/, '').split('/')
+  S.mc = null
+  ;(routes[name] || home)(...args.map(decodeURIComponent)).catch(err =>
+    app.innerHTML = `<div class="pad"><p class="dim">${err === 404
+        ? 'Não existe nada no índice com esse endereço.'
+        : `Erro ${esc(err)}. O banco já foi populado? Rode <code>python ingest.py</code>.`}</p>
+      <p><a href="#">← todos os MCs</a></p></div>`)
+}
+addEventListener('hashchange', go); go()
+</script>
+</html>
